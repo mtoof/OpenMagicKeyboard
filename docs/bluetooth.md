@@ -1,8 +1,7 @@
 # Bluetooth implementation and validation
 
-On 2026-10-13 the user disconnected USB and confirmed ordinary Bluetooth
-typing works with Microsoft HidBth/kbdhid. After explicit installation approval,
-version 0.3.0.0 was bound to this Bluetooth device as `oem115.inf`. Version 0.3.0.1
+On 2026-10-13, with USB disconnected, ordinary Bluetooth typing was verified
+with Microsoft HidBth/kbdhid. Version 0.3.0.0 was then bound to this Bluetooth device as `oem115.inf`. Version 0.3.0.1
 is now bound as `oem119.inf`. The live stack
 is HidBth / OpenMagicKeyboardFilter / BthEnum, with Problem 0 and no reboot request.
 The control interface reports a valid report 1 / 10-byte layout and an available
@@ -60,8 +59,8 @@ Separate USB and Bluetooth filter bindings follow the standard Windows HID
 model (HidUsb and HidBth function drivers). No third-party binaries or installers
 are used by this implementation.
 Bluetooth mapping and native brightness-key reporting are installed but disabled
-until input and Fn verification, followed by physical tests. The custom popup was removed at the
-user's request. Ordinary Bluetooth typing and native volume indicators continue
+until input and Fn verification, followed by physical tests. A custom brightness popup was dropped
+in favor of the native indicator. Ordinary Bluetooth typing and native volume indicators continue
 to be provided by Windows.
 
 Native display-brightness input uses consumer-control brightness usages

@@ -12,15 +12,14 @@ Original MIT-licensed KMDF 1.33 lower filter for the exact USB interface
 Microsoft HidUsb/HidBth remain the function drivers. MI_00, other models and
 keyboard class filters are excluded.
 
-The SYS/INF/CAT package builds successfully. Release is locally test-signed after
-explicit approval. Initial MI_01 loading and Microsoft HID rollback succeeded;
-the latest build is installed on the connected MI_01. The real 207-byte
+The SYS/INF/CAT package builds with code analysis and is signed with a local
+test certificate. MI_01 loading and Microsoft HID rollback were exercised on
+hardware. The real 207-byte
 descriptor validates report ID 1 / 10 bytes, including Fn/Globe. An isolated
 three-tap experiment confirmed Fn, and Windows received paired F23 events.
-Version 0.2 adds optional Fn+Delete/arrows, Caps/Shift mapping and icon modes;
-these expanded features still need physical validation. Test signing and
-Memory Integrity are active. See the
-[complete build, signing, install and rollback instructions](../README.md#build-review-and-install-the-driver).
+Fn+Delete/arrows, Caps/Shift mapping and icon modes are optional. The driver
+loads with Memory Integrity (HVCI) enabled. See the
+[build and install instructions](../README.md#install).
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\build.ps1 -Target Driver -Analyze
