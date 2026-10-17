@@ -64,7 +64,23 @@ namespace OpenMagicKeyboard.Gui
         { return RunCore(direction, out failures, false); }
         internal static string RunExternal(int direction, out int failures)
         { return RunCore(direction, out failures, true); }
-        private static string RunCore(int direction, out int failures, bool nativeLaptop)
+        /// <summary>Sets every DDC/CI monitor to the same percentage as the built-in panel.</summary>
+        internal static string SyncExternal(int percent, out int failures)
+        {
+            if (percent < 0 || percent > 100) throw new ArgumentException("Invalid brightness percentage.");
+            return RunCore(1, out failures, true, percent);
+        }
+        /// <summary>Current built-in panel brightness (WMI), or -1 when there is none.</summary>
+        internal static int InternalPercent()
+        {
+            try {
+                using (var search = new ManagementObjectSearcher(@"root\wmi", "SELECT * FROM WmiMonitorBrightness"))
+                using (var values = search.Get()) foreach (ManagementObject value in values) using (value)
+                    if ((bool)value["Active"]) return Convert.ToInt32(value["CurrentBrightness"]);
+            } catch (ManagementException) { }
+            return -1;
+        }
+        private static string RunCore(int direction, out int failures, bool nativeLaptop, int absolutePercent = -1)
         {
             if (direction < -1 || direction > 1) throw new ArgumentException("Invalid direction.");
             var lines = new List<string>(); var wmi = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -124,7 +140,9 @@ namespace OpenMagicKeyboard.Gui
                             max <= min || current < min || current > max) {
                             lines.Add(name + ": brightness unavailable (check DDC/CI in the monitor menu)"); ++errors; continue;
                         }
-                        uint target = direction == 0 ? current : Step(min, current, max, direction);
+                        uint target = direction == 0 ? current : absolutePercent >= 0 ?
+                            (uint)(min + Math.Round((max - min) * absolutePercent / 100.0)) : Step(min, current, max, direction);
+                        if (absolutePercent >= 0 && target == current) { lines.Add(name + ": " + absolutePercent + "% (DDC/CI)"); continue; }
                         if (direction != 0 && !(highLevel ? SetMonitorBrightness(display.Handle, target) : SetVCPFeature(display.Handle, 0x10, target))) {
                             lines.Add(name + ": brightness update failed"); ++errors; continue;
                         }

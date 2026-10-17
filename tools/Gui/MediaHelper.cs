@@ -114,6 +114,19 @@ namespace OpenMagicKeyboard.Gui
                 SendInput((uint)pressed, releases, 40);
             }
         }
+        /// <summary>Built-in panel level after Windows has applied the native key press, or -1 without a panel.</summary>
+        private static int SettledPanelLevel()
+        {
+            Thread.Sleep(250);
+            int level = DisplayBrightness.InternalPercent();
+            for (int i = 0; i < 6 && level >= 0; ++i) {
+                Thread.Sleep(100);
+                int next = DisplayBrightness.InternalPercent();
+                if (next == level) break;
+                level = next;
+            }
+            return level;
+        }
         private void BrightnessLoop()
         {
             while (true) {
@@ -124,7 +137,17 @@ namespace OpenMagicKeyboard.Gui
                 }
                 if (!OnInputDesktop()) { lock (brightnessLock) brightnessQueue.Clear(); continue; }
                 string notice = null;
-                try { int failures; string result = nativeBrightness ? DisplayBrightness.RunExternal(direction, out failures) : DisplayBrightness.Run(direction, out failures); if (failures != 0) notice = result; }
+                try {
+                    int failures; string result;
+                    // Windows steps the built-in panel and draws its bar; external monitors
+                    // follow that level so the bar's 0% and 100% hold for every screen.
+                    int panel = nativeBrightness ? SettledPanelLevel() : -1;
+                    if (panel >= 0) {
+                        lock (brightnessLock) brightnessQueue.Clear(); // the panel level already includes queued presses
+                        result = DisplayBrightness.SyncExternal(panel, out failures);
+                    } else result = nativeBrightness ? DisplayBrightness.RunExternal(direction, out failures) : DisplayBrightness.Run(direction, out failures);
+                    if (failures != 0) notice = result;
+                }
                 catch (Exception) { notice = "Brightness control failed. Check the external monitors' DDC/CI setting."; }
                 if (notice != null) lock (brightnessLock) brightnessNotice = notice;
             }
