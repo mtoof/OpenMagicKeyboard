@@ -28,6 +28,12 @@ if ($matchingKits.Count -eq 0) { throw 'No matching SDK/WDK build was found.' }
 $sdkVersion = $matchingKits[0].Name
 $executableName = if ($Target -eq 'HidProbe') { 'MagicKeyboardHidProbe' } elseif ($Target -eq 'Driver') { 'OpenMagicKeyboardFilter' } elseif ($Target -eq 'DriverTests') { 'MagicKeyboardDriverTests' } else { 'MagicKeyboardDeviceBinding' }
 $project = if ($Target -eq 'Driver') { Join-Path $repoRoot 'driver\OpenMagicKeyboardFilter.vcxproj' } else { Join-Path $repoRoot "tools\$Target\$executableName.vcxproj" }
+if ($Target -eq 'Driver') {
+    # A previously signed catalog makes MSBuild's DrvCat step fail (0x800B0109).
+    # It is regenerated below and must be signed again after every build anyway.
+    $staleCatalog = Join-Path $repoRoot "artifacts\$Configuration\package\OpenMagicKeyboardFilter.cat"
+    if (Test-Path -LiteralPath $staleCatalog) { Remove-Item -LiteralPath $staleCatalog }
+}
 Write-Host "Building ${Target}: $Configuration x64; SDK/WDK $sdkVersion; $msbuild"
 & $msbuild $project /nologo /m /t:Build "/p:Configuration=$Configuration" /p:Platform=x64 "/p:WindowsTargetPlatformVersion=$sdkVersion" "/p:RunCodeAnalysis=$($Analyze.IsPresent.ToString().ToLowerInvariant())" /v:minimal
 if ($LASTEXITCODE -ne 0) { throw "MSBuild failed with exit code $LASTEXITCODE." }
