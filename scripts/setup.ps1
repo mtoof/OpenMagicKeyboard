@@ -45,6 +45,13 @@ function Get-Targets {
         }
     })
 }
+function Get-ManagementNodes {
+    @(Get-PnpDevice -PresentOnly -ErrorAction Stop | Where-Object { $_.InstanceId -like 'USB\VID_05AC&PID_0320&MI_00\*' } | ForEach-Object {
+        [pscustomobject]@{ InstanceId=$_.InstanceId
+            Provider=[string](Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName DEVPKEY_Device_DriverProvider).Data
+            Problem=[int](Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName DEVPKEY_Device_ProblemCode).Data }
+    })
+}
 function Get-ProjectPackages {
     @(Get-WindowsDriver -Online -ErrorAction Stop | Where-Object {
         $_.ProviderName -eq $Provider -and [IO.Path]::GetFileName($_.OriginalFileName) -ieq 'OpenMagicKeyboardFilter.inf'
@@ -63,6 +70,7 @@ function Show-Status {
         $live=if($t.Provider -eq $Provider){ if(Test-LiveFilter $t.InstanceId){'filter loaded'}else{'FILTER NOT LOADED'} }else{''}
         Write-Host ("{0,-9} {1} {2} ({3}) problem={4} {5}" -f $t.Transport,$t.Provider,$t.Version,$t.Inf,$t.Problem,$live)
     }
+    foreach ($m in Get-ManagementNodes) { Write-Host ("MI_00     {0} (Device Management, no driver needed) problem={1}" -f $m.Provider,$m.Problem) }
     if (Test-Elevated) {
         $packages=Get-ProjectPackages
         Write-Host ("Project packages staged: {0}" -f (($packages | ForEach-Object { "$($_.Driver) v$($_.Version)" }) -join ', '))
@@ -83,11 +91,12 @@ function Invoke-Binding([string]$Verb,[string]$InstanceId,[string]$AuditRoot,[st
     & $binding @arguments | Out-Host
     return $LASTEXITCODE
 }
-function Remove-StalePackages([string]$KeepInf) {
+function Remove-StalePackages([string]$KeepInf,[switch]$Uninstall) {
     foreach ($p in Get-ProjectPackages) {
         if ($KeepInf -and $p.Driver -ieq $KeepInf) { continue }
         Write-Host "Removing stale project package $($p.Driver) v$($p.Version)"
-        & $pnputil /delete-driver $p.Driver | Out-Host
+        # /uninstall also releases MI_00, which falls back to Windows' own choice.
+        if ($Uninstall) { & $pnputil /delete-driver $p.Driver /uninstall | Out-Host } else { & $pnputil /delete-driver $p.Driver | Out-Host }
         if ($LASTEXITCODE -ne 0) { Write-Warning "$($p.Driver) is still in use and was kept." }
     }
 }
@@ -119,7 +128,7 @@ try {
             $result=Invoke-Binding $verb $t.InstanceId $auditRoot $null
             if ($result -ne 0 -and $result -ne 3010) { throw "Could not rebind $($t.InstanceId) (exit $result)." }
         }
-        Remove-StalePackages $null
+        Remove-StalePackages $null -Uninstall
         Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $ProgramDataRoot -Recurse -Force -ErrorAction SilentlyContinue
         Show-Status
@@ -148,9 +157,14 @@ try {
     $stage=@(& $pnputil /add-driver $package.Inf)
     $stage | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'pnputil could not stage the package.' }
-    $current=@(Get-ProjectPackages | Where-Object {
+    # Prefer the published name pnputil just reported; INF-only updates leave the
+    # .sys byte-identical, so the hash alone can match an older staged package.
+    $published=@($stage | ForEach-Object { if ($_ -match '(?i)Published Name:\s*(oem[0-9]+\.inf)') { $Matches[1] } } | Select-Object -Unique)
+    $hashMatches=@(Get-ProjectPackages | Where-Object {
         $stored=Join-Path ([IO.Path]::GetDirectoryName($_.OriginalFileName)) 'OpenMagicKeyboardFilter.sys'
         (Test-Path -LiteralPath $stored) -and (Get-FileHash -LiteralPath $stored -Algorithm SHA256).Hash -eq $hash })
+    $current=@($hashMatches | Where-Object { $published -contains $_.Driver })
+    if ($current.Count -ne 1) { $current=@($hashMatches | Sort-Object { [version]$_.Version } -Descending | Select-Object -First 1) }
     if ($current.Count -ne 1) { throw 'Cannot uniquely identify the staged package.' }
     $currentInf=$current[0].Driver
     Write-Host "Staged as $currentInf"
@@ -169,6 +183,13 @@ try {
             [void](Invoke-Binding '--apply-microsoft' $t.InstanceId $auditRoot $null)
             $failed+=$t.Transport
         }
+    }
+    # MI_00 (Apple's Device Management interface) has no Windows driver and the
+    # generic HID driver fails with Code 10; this package gives it a null driver.
+    # /install only updates devices for which this package is the best match.
+    if (Get-ManagementNodes) {
+        & $pnputil /add-driver $package.Inf /install | Out-Host
+        foreach ($m in Get-ManagementNodes) { Write-Host ("Device Management (MI_00): {0}, problem={1}" -f $m.Provider,$m.Problem) }
     }
     # Root cause of the earlier failure: older project packages stayed staged and
     # Windows later picked one whose service binary had been deleted. Keep exactly one.
