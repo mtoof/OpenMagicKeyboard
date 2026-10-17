@@ -1,0 +1,73 @@
+; SPDX-License-Identifier: MIT. Exact Apple USB MI_01 and Bluetooth HID filter.
+[Version]
+Signature="$WINDOWS NT$"
+Class=HIDClass
+ClassGuid={745A17A0-74D3-11D0-B6FE-00A0C90F57DA}
+Provider=%Provider%
+DriverVer=10/17/2026,0.4.0.0
+CatalogFile=OpenMagicKeyboardFilter.cat
+PnpLockdown=1
+
+[Manufacturer]
+%Provider%=Models,NTamd64.10.0...22000
+[Models.NTamd64.10.0...22000]
+%Description%=Install,USB\VID_05AC&PID_0320&MI_01
+%BluetoothDescription%=InstallBluetooth,BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&0320
+
+[DestinationDirs]
+DriverCopy=13
+[SourceDisksNames]
+1=%Disk%,,,
+[SourceDisksFiles]
+OpenMagicKeyboardFilter.sys=1
+[DriverCopy]
+OpenMagicKeyboardFilter.sys
+
+[Install.NT]
+Include=input.inf
+Needs=HID_Inst.NT
+CopyFiles=DriverCopy
+[Install.NT.HW]
+Include=input.inf
+Needs=HID_Inst.NT.HW
+[Install.NT.Services]
+Include=input.inf
+Needs=HID_Inst.NT.Services
+AddService=OpenMagicKeyboardFilter,0,FilterService
+[FilterService]
+DisplayName=%ServiceName%
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%13%\OpenMagicKeyboardFilter.sys
+[Install.NT.Filters]
+AddFilter=OpenMagicKeyboardFilter,,FilterRegistration
+[FilterRegistration]
+FilterPosition=Lower
+[Install.NT.Wdf]
+KmdfService=OpenMagicKeyboardFilter,Framework
+[Framework]
+KmdfLibraryVersion=1.33
+
+[InstallBluetooth.NT]
+Include=hidbth.inf
+Needs=HIDBTH_Inst.NT
+CopyFiles=DriverCopy
+[InstallBluetooth.NT.HW]
+Include=hidbth.inf
+Needs=HIDBTH_Inst.NT.HW
+[InstallBluetooth.NT.Services]
+Include=hidbth.inf
+Needs=HIDBTH_Inst.NT.Services
+AddService=OpenMagicKeyboardFilter,0,FilterService
+[InstallBluetooth.NT.Filters]
+AddFilter=OpenMagicKeyboardFilter,,FilterRegistration
+[InstallBluetooth.NT.Wdf]
+KmdfService=OpenMagicKeyboardFilter,Framework
+
+[Strings]
+Provider="OpenMagicKeyboard Project"
+Description="Apple Magic Keyboard USB MI_01 (OpenMagicKeyboard Filter)"
+BluetoothDescription="Apple Magic Keyboard Bluetooth (OpenMagicKeyboard Filter)"
+ServiceName="OpenMagicKeyboard USB Interface Filter"
+Disk="OpenMagicKeyboard Driver Package"
