@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # Read-only signing prerequisites. Never retrieves BitLocker recovery passwords.
 [CmdletBinding()]
 param()

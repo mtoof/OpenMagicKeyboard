@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 function Assert-Administrator {
     $p=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Use Administrator PowerShell for execution.' }

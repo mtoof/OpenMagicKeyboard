@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # Renders tools\Gui\app.ico: a Magic Keyboard style icon (silver aluminium body,
 # white keys) at 16-256 px. Original artwork; no Apple logo. Run once after
 # changing the design; build-gui.ps1 embeds the committed app.ico.

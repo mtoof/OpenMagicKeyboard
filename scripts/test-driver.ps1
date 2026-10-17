@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 [CmdletBinding()]
 param([ValidateSet('Release','Debug')][string]$Configuration='Release',[string]$DescriptorPath)
 $ErrorActionPreference='Stop'

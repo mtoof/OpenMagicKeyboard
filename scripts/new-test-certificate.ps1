@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # Creates a local code-signing test certificate for this PC, trusts it (LocalMachine
 # Root + TrustedPublisher) so Windows accepts the test-signed driver, and prints the
 # thumbprint for sign-package.ps1. Plan only unless -Execute; trusting needs elevation.

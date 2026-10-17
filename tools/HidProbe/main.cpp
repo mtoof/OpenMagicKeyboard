@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Independently written from documented Windows APIs. See LICENSE and docs/sources.md.
 #include <windows.h>
 #include <setupapi.h>

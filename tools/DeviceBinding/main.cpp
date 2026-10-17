@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Original device-specific configuration utility. No HID input/report reads.
 #include <windows.h>
 #include <setupapi.h>

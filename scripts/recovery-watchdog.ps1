@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # Boot-time safety net, installed by setup.ps1 as a SYSTEM scheduled task.
 # A lower filter that cannot load (test signing turned off, image missing,
 # Problem 39/52) takes the whole keyboard down with it. When that happens this

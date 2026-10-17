@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 # One-step install / repair / uninstall for the OpenMagicKeyboard filter.
 #   setup.ps1                      install or repair on every connected transport (USB + Bluetooth)
 #   setup.ps1 -EnableTestSigning   also turn on Windows test signing when it is off (restart required)
