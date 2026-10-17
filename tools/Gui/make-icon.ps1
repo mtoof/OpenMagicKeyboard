@@ -3,7 +3,7 @@
 # white keys) at 16-256 px. Original artwork; no Apple logo. Run once after
 # changing the design; build-gui.ps1 embeds the committed app.ico.
 [CmdletBinding()]
-param([string]$OutputPath = (Join-Path $PSScriptRoot 'app.ico'))
+param([string]$OutputPath = (Join-Path $PSScriptRoot 'app.ico'),[string]$PreviewPath)
 $ErrorActionPreference = 'Stop'
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
 using System;
@@ -93,6 +93,5 @@ public static class MagicIcon {
 }
 '@
 [MagicIcon]::Save($OutputPath, [int[]](256, 64, 48, 32, 24, 20, 16))
-$preview = [IO.Path]::ChangeExtension($OutputPath, '.png')
-$bmp = [MagicIcon]::Render(256); $bmp.Save($preview, [Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
-Write-Host "Icon: $OutputPath (preview $preview)"
+if ($PreviewPath) { $bmp = [MagicIcon]::Render(256); $bmp.Save($PreviewPath, [Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose() }
+Write-Host "Icon: $OutputPath"
