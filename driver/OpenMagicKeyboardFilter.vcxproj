@@ -35,7 +35,7 @@
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link><AdditionalDependencies>wdmsec.lib;usbd.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
-    <Inf><TimeStamp>0.4.1.0</TimeStamp><DateStamp>10/18/2026</DateStamp></Inf>
+    <Inf><TimeStamp>0.4.2.0</TimeStamp><DateStamp>10/18/2026</DateStamp></Inf>
   </ItemDefinitionGroup>
   <ItemGroup><ClCompile Include="Driver.c" /><ClCompile Include="ReportCore.c" /><ClCompile Include="NativeCore.c" /></ItemGroup>
   <ItemGroup><ClInclude Include="ReportCore.h" /><ClInclude Include="Protocol.h" /></ItemGroup>

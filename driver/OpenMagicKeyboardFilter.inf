@@ -1,10 +1,11 @@
-; SPDX-License-Identifier: MIT. Exact Apple USB MI_01 and Bluetooth HID filter.
+; SPDX-License-Identifier: MIT. Exact Apple USB MI_01 and Bluetooth HID filter;
+; MI_00 (Device Management) gets a placeholder with no driver.
 [Version]
 Signature="$WINDOWS NT$"
 Class=HIDClass
 ClassGuid={745A17A0-74D3-11D0-B6FE-00A0C90F57DA}
 Provider=%Provider%
-DriverVer=10/18/2026,0.4.1.0
+DriverVer=10/18/2026,0.4.2.0
 CatalogFile=OpenMagicKeyboardFilter.cat
 PnpLockdown=1
 
@@ -13,6 +14,7 @@ PnpLockdown=1
 [Models.NTamd64.10.0...22000]
 %Description%=Install,USB\VID_05AC&PID_0320&MI_01
 %BluetoothDescription%=InstallBluetooth,BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&0320
+%ManagementDescription%=InstallManagement,USB\VID_05AC&PID_0320&MI_00
 
 [DestinationDirs]
 DriverCopy=13
@@ -65,9 +67,17 @@ AddFilter=OpenMagicKeyboardFilter,,FilterRegistration
 [InstallBluetooth.NT.Wdf]
 KmdfService=OpenMagicKeyboardFilter,Framework
 
+; MI_00 is Apple's Device Management interface (pairing/firmware on macOS).
+; Windows has no driver for it and the generic HID driver fails (Code 10), so
+; install a null driver: the device is reported as working and nothing loads.
+[InstallManagement.NT]
+[InstallManagement.NT.Services]
+AddService=,2
+
 [Strings]
 Provider="OpenMagicKeyboard Project"
 Description="Apple Magic Keyboard USB MI_01 (OpenMagicKeyboard Filter)"
 BluetoothDescription="Apple Magic Keyboard Bluetooth (OpenMagicKeyboard Filter)"
 ServiceName="OpenMagicKeyboard USB Interface Filter"
 Disk="OpenMagicKeyboard Driver Package"
+ManagementDescription="Apple Magic Keyboard Device Management (no driver required)"

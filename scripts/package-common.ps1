@@ -43,8 +43,8 @@ function Read-ProjectPackage([string]$Directory) {
     $text=[IO.File]::ReadAllText($inf)
     $models=[regex]::Match($text,'(?ms)^\[Models\.NTamd64[^\]]*\]\r?\n(.*?)(?=^\[|\z)').Groups[1].Value
     $modelLines=@($models -split '\r?\n' | ForEach-Object {$_.Trim()} | Where-Object {$_ -and -not $_.StartsWith(';')})
-    $ids=@($modelLines | ForEach-Object { if($_ -notmatch '^%[^%]+%\s*=\s*Install(?:Bluetooth)?\s*,\s*(.+?)\s*$'){throw 'Unexpected model line.'}; $Matches[1] })
-    if ($ids.Count -ne 2 -or $ids -notcontains 'USB\VID_05AC&PID_0320&MI_01' -or $ids -notcontains 'BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&0320' -or
+    $ids=@($modelLines | ForEach-Object { if($_ -notmatch '^%[^%]+%\s*=\s*Install(?:Bluetooth|Management)?\s*,\s*(.+?)\s*$'){throw 'Unexpected model line.'}; $Matches[1] })
+    if ($ids.Count -ne 3 -or $ids -notcontains 'USB\VID_05AC&PID_0320&MI_00' -or $ids -notcontains 'USB\VID_05AC&PID_0320&MI_01' -or $ids -notcontains 'BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&0320' -or
         $text -notmatch '(?im)^Provider="OpenMagicKeyboard Project"\s*$' -or
         $text -notmatch '(?im)^FilterPosition\s*=\s*Lower\s*$' -or
         $text -notmatch '(?im)^ServiceBinary\s*=\s*%13%\\OpenMagicKeyboardFilter\.sys\s*$') { throw 'Unexpected project INF identity or scope.' }
