@@ -141,6 +141,27 @@ static BOOLEAN SetupIsDescriptor(const UCHAR setup[8]) {
     return setup[0] == 0x81 && setup[1] == 6 && (setup[3] == 0x22 || setup[3] == 0x21) &&
            setup[4] == 1 && setup[5] == 0;
 }
+/* HidUsb takes the report-descriptor length from the HID class descriptor
+   embedded in the configuration descriptor, not from a separate 0x21 request.
+   When the native brightness collection is appended, grow that length too, or
+   HidClass parses only the original bytes and the collection never appears. */
+static VOID PatchConfigurationHidLength(PUCHAR b, ULONG n) {
+    ULONG pos = 0; BOOLEAN keyboardInterface = FALSE;
+    while (n - pos >= 2) {
+        ULONG len = b[pos], type = b[pos + 1];
+        if (len < 2 || len > n - pos) return;
+        if (type == 4 && len >= 9) keyboardInterface = b[pos + 2] == 1; /* bInterfaceNumber of MI_01 */
+        else if (type == 0x21 && keyboardInterface && len >= 9 && b[pos + 5] >= 1 && b[pos + 6] == 0x22) {
+            ULONG original = b[pos + 7] | ((ULONG)b[pos + 8] << 8);
+            if (original && original <= MK_MAX_DESCRIPTOR - MK_NATIVE_EXTRA) {
+                original += MK_NATIVE_EXTRA; b[pos + 7] = (UCHAR)original; b[pos + 8] = (UCHAR)(original >> 8);
+                Trace(28, original);
+            }
+            return;
+        }
+        pos += len;
+    }
+}
 static BOOLEAN WantNative(DEVICE_CONTEXT *ctx) {
     return (ctx->Active.Flags & (MK_FLAG_MAP | MK_FLAG_FN_VERIFIED)) == (MK_FLAG_MAP | MK_FLAG_FN_VERIFIED) && ctx->Active.FKeyMode != 0;
 }
@@ -296,7 +317,7 @@ VOID Completion(WDFREQUEST request, WDFIOTARGET target, PWDF_REQUEST_COMPLETION_
           u->UrbHeader.Length >= FIELD_OFFSET(struct _URB_SELECT_INTERFACE, Interface) + FIELD_OFFSET(USBD_INTERFACE_INFORMATION, Pipes)))) {
         if (rc->Descriptor) {
             PVOID returnedBuffer = NULL; PMDL returnedMdl = NULL;
-            if (u->UrbHeader.Function == URB_FUNCTION_GET_DESCRIPTOR_FROM_INTERFACE) {
+            if (u->UrbHeader.Function == URB_FUNCTION_GET_DESCRIPTOR_FROM_INTERFACE || u->UrbHeader.Function == URB_FUNCTION_GET_DESCRIPTOR_FROM_DEVICE) {
                 length = u->UrbControlDescriptorRequest.TransferBufferLength;
                 returnedBuffer = u->UrbControlDescriptorRequest.TransferBuffer; returnedMdl = u->UrbControlDescriptorRequest.TransferBufferMDL;
             } else if (u->UrbHeader.Function == URB_FUNCTION_CONTROL_TRANSFER) {
@@ -311,6 +332,10 @@ VOID Completion(WDFREQUEST request, WDFIOTARGET target, PWDF_REQUEST_COMPLETION_
             if (bytes) {
                 MK_LAYOUT layout; MK_NATIVE_RESULT result; BOOLEAN native;
                 WdfSpinLockAcquire(ctx->Lock); native = ctx->Ready && ctx->Generation == rc->Generation && WantNative(ctx); WdfSpinLockRelease(ctx->Lock);
+                if (rc->DescriptorType == 2) {
+                    if (native) PatchConfigurationHidLength(bytes, length);
+                    goto Finished;
+                }
                 if (rc->DescriptorType == 0x21) {
                     if (native && length >= 9 && bytes[0] == 9 && bytes[1] == 0x21 && bytes[5] == 1 && bytes[6] == 0x22) {
                         ULONG original = bytes[7] | ((ULONG)bytes[8] << 8);
@@ -422,6 +447,10 @@ VOID InternalIoctl(WDFQUEUE queue, WDFREQUEST request, size_t outLength, size_t 
                 (u->UrbControlDescriptorRequest.DescriptorType == 0x22 || u->UrbControlDescriptorRequest.DescriptorType == 0x21)) {
                 rc->DescriptorType = u->UrbControlDescriptorRequest.DescriptorType;
                 rc->Descriptor = TRUE; rc->Capacity = u->UrbControlDescriptorRequest.TransferBufferLength; observe = TRUE;
+            } else if (f == URB_FUNCTION_GET_DESCRIPTOR_FROM_DEVICE && u->UrbHeader.Length == sizeof(struct _URB_CONTROL_DESCRIPTOR_REQUEST) &&
+                       u->UrbControlDescriptorRequest.DescriptorType == 2) { /* configuration: carries the HID descriptor */
+                rc->DescriptorType = 2;
+                rc->Descriptor = TRUE; rc->Capacity = u->UrbControlDescriptorRequest.TransferBufferLength; observe = TRUE;
             } else if (f == URB_FUNCTION_CONTROL_TRANSFER && u->UrbHeader.Length == sizeof(struct _URB_CONTROL_TRANSFER) && SetupIsDescriptor(u->UrbControlTransfer.SetupPacket)) {
                 rc->DescriptorType = u->UrbControlTransfer.SetupPacket[3];
                 rc->Descriptor = TRUE; rc->Capacity = u->UrbControlTransfer.TransferBufferLength; observe = TRUE;
@@ -443,7 +472,7 @@ VOID InternalIoctl(WDFQUEUE queue, WDFREQUEST request, size_t outLength, size_t 
             if (observe) {
                 rc->Urb = u; rc->Function = f; rc->Length = u->UrbHeader.Length;
                 if (rc->Descriptor) {
-                    if (f == URB_FUNCTION_GET_DESCRIPTOR_FROM_INTERFACE) {
+                    if (f == URB_FUNCTION_GET_DESCRIPTOR_FROM_INTERFACE || f == URB_FUNCTION_GET_DESCRIPTOR_FROM_DEVICE) {
                         rc->DescriptorBuffer = u->UrbControlDescriptorRequest.TransferBuffer; rc->DescriptorMdl = u->UrbControlDescriptorRequest.TransferBufferMDL;
                     } else if (f == URB_FUNCTION_CONTROL_TRANSFER) {
                         rc->DescriptorBuffer = u->UrbControlTransfer.TransferBuffer; rc->DescriptorMdl = u->UrbControlTransfer.TransferBufferMDL;
